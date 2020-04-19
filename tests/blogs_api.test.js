@@ -109,6 +109,42 @@ test('if url is missing, receive 400', async () => {
 
 })
 
+test('deleting a resource removes the resource', async () => {
+    const blogs = await helper.blogsInDb()
+    const idToDelete = blogs[0].id
+
+    const response = await api.delete(`/api/blogs/${idToDelete}`)
+
+    const lessBlogs = await helper.blogsInDb()
+    expect(lessBlogs).toHaveLength(blogs.length - 1)
+    expect(lessBlogs.map(b => b.id)).not.toContain(idToDelete)
+})
+
+test('changing a resource changes the resource', async () => {
+    const blogs = await helper.blogsInDb()
+    const idToChange = blogs[0].id
+
+    const changedBlog = {
+        title: "The title is new",
+        author: "Newey Duderson",
+        url: "http://radriders.com/calm",
+        likes: 349857398475
+    }
+
+    let changedBlogPlusId = changedBlog
+    changedBlogPlusId['id'] = idToChange
+
+    const response = await api.put(`/api/blogs/${idToChange}`)
+        .send(changedBlog)
+        .expect(200)
+        .expect('Content-Type', /application\/json/)
+
+    let updatedBlog = await Blog.findById(idToChange)
+    updatedBlog = updatedBlog.toJSON()
+
+    expect(updatedBlog).toEqual(changedBlogPlusId)
+})
+
 
 
 afterAll((done) => {

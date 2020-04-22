@@ -8,6 +8,7 @@ const logger = require('./utils/logger')
 
 const blogsRouter = require('./controllers/blogs')
 const usersRouter = require('./controllers/users')
+const loginRouter = require('./controllers/login')
 
 logger.info('connecting to', config.MONGODB_URI)
 
@@ -18,6 +19,7 @@ app.use(express.json())
 
 app.use('/api/blogs', blogsRouter)
 app.use('/api/users', usersRouter)
+app.use('/api/login', loginRouter)
 
 const errorHandler = (error, request, response, next) => {
     logger.error(error.message)
@@ -27,6 +29,9 @@ const errorHandler = (error, request, response, next) => {
 
     } else if (error.name === 'ValidationError') {
         return response.status(400).json({ error: error.message })
+    }
+    else if (error.name === 'JsonWebTokenError') {
+        return response.status(400).json({ error: 'authentication missing or invalid' })
     }
 
     next(error)

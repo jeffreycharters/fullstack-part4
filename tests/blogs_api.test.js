@@ -1,7 +1,9 @@
 const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
+const bcrypt = require('bcrypt')
 const Blog = require('../models/blog')
+const User = require('../models/user')
 
 const helper = require('./test_helper')
 
@@ -145,7 +147,100 @@ test('changing a resource changes the resource', async () => {
     expect(updatedBlog).toEqual(changedBlogPlusId)
 })
 
+describe('when a single initial user exists in the database', () => {
+    beforeEach(async () => {
+        await User.deleteMany({})
 
+        const passwordHash = await bcrypt.hash('sekret', 10)
+        const user = new User({ username: 'root', passwordHash })
+
+        await user.save()
+    })
+
+    test('creation succeeds with a fresh username', async () => {
+        const usersAtStart = await User.find({})
+
+        const newUser = {
+            username: 'shrednik',
+            name: 'megashreds',
+            password: 'shrednik'
+        }
+
+        await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(200)
+            .expect('Content-Type', /application\/json/)
+
+        const usersAtEnd = await User.find({})
+        expect(usersAtEnd).toHaveLength(usersAtStart.length + 1)
+
+        const usernames = usersAtEnd.map(u => u.username)
+        expect(usernames).toContain(newUser.username)
+
+    })
+
+    test('creation fails with a duplicate username', async () => {
+        const usersAtStart = await User.find({})
+
+        const newUser = {
+            username: 'root',
+            name: 'megashreds',
+            password: 'shrednik'
+        }
+
+        await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400)
+            .expect('Content-Type', /application\/json/)
+
+        const usersAtEnd = await User.find({})
+        expect(usersAtEnd).toHaveLength(usersAtStart.length)
+
+    })
+
+    test('creation fails with a username too short', async () => {
+        const usersAtStart = await User.find({})
+
+        const newUser = {
+            username: 'h',
+            name: 'megashreds',
+            password: 'shrednik'
+        }
+
+        await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400)
+            .expect('Content-Type', /application\/json/)
+
+        const usersAtEnd = await User.find({})
+        expect(usersAtEnd).toHaveLength(usersAtStart.length)
+
+    })
+
+    test('creation fails with a username too short', async () => {
+        const usersAtStart = await User.find({})
+
+        const newUser = {
+            username: 'bronconius',
+            name: 'megashreds',
+            password: 'sh'
+        }
+
+        await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400)
+            .expect('Content-Type', /application\/json/)
+
+        const usersAtEnd = await User.find({})
+        expect(usersAtEnd).toHaveLength(usersAtStart.length)
+
+    })
+
+})
 
 afterAll((done) => {
     mongoose.connection.close()
